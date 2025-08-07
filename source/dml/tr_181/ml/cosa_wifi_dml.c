@@ -3248,8 +3248,7 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_AggregationMSDU", TRUE))
     {
-	if (rcfg->AggregationMSDU == bValue)
-        {
+        if (rcfg->AggregationMSDU == bValue) {
             return TRUE;
         }
         rcfg->AggregationMSDU = bValue;
@@ -4883,6 +4882,251 @@ Stats3_Commit
     return ANSC_STATUS_SUCCESS; 
 }
 
+/***********************************************************************
+
+  APIs for Object:
+
+ WiFi.Radio.{i}.AMSDU_TID.{i}.Enabled
+
+   *  AMSDU_TID_GetEntryCount
+   *  AMSDU_TID_GetEntry
+   *  AMSDU_TID_GetParamBoolValue
+   *  AMSDU_TID_SetParamBoolValue
+
+ ***********************************************************************/
+
+static BOOL *get_tid_from_param(int tid_idx, wifi_radio_operationParam_t *wifiRadioOperParam)
+{
+    if (tid_idx >= 0 && tid_idx < MAX_AMSDU_TID)
+    {
+        return &wifiRadioOperParam->amsduTid[tid_idx];
+    }
+    return NULL;
+}
+
+/**********************************************************************
+
+        caller:	 owner of this object
+
+  prototype:
+
+    ULONG
+    AMSDU_TID_GetEntryCount
+      (
+        ANSC_HANDLE         hInsContext
+      );
+
+  description:
+
+    This function is called to retrieve the count of the table.
+
+  argument:   ANSC_HANDLE         hInsContext,
+        The instance handle;
+
+  return:   The count of the table
+
+**********************************************************************/
+ULONG
+AMSDU_TID_GetEntryCount(ANSC_HANDLE hInsContext)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return MAX_AMSDU_TID;
+}
+
+/**********************************************************************
+
+  caller:   owner of this object
+
+  prototype:
+
+    ANSC_HANDLE
+    AMSDU_TID_GetEntry
+      (
+        ANSC_HANDLE         hInsContext,
+        ULONG            nIndex,
+        ULONG*            pInsNumber
+      );
+
+  description:
+
+    This function is called to retrieve the entry specified by the index.
+
+  argument:  ANSC_HANDLE         hInsContext,
+        The instance handle;
+
+        ULONG            nIndex,
+        The index of this entry;
+
+        ULONG*            pInsNumber
+        The output instance number;
+
+  return:   The handle to identify the entry
+
+**********************************************************************/
+ANSC_HANDLE
+AMSDU_TID_GetEntry(ANSC_HANDLE hInsContext, ULONG nIndex, ULONG *pInsNumber)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: nIndex:%ld\n", __func__, __LINE__, nIndex);
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *)hInsContext;
+
+    if (nIndex < MAX_AMSDU_TID) {
+        if (wifiRadioOperParam == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,
+                "%s:%d: No valid wifiRadioOperParam was given for AMSDU setting\n", __func__,
+                __LINE__);
+            return NULL;
+        }
+
+        *pInsNumber = nIndex + 1;
+        return (ANSC_HANDLE)get_tid_from_param(*pInsNumber - 1, wifiRadioOperParam);
+    }
+    return NULL; /* return the handle */
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        AMSDU_TID_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
+{
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
+        __LINE__);
+    return FALSE;
+#else
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        BOOL *is_enabled = (BOOL *)hInsContext;
+        if (!is_enabled) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid TID for AMSDU - param was %s\n",
+                __func__, __LINE__, ParamName);
+            return FALSE;
+        }
+
+        if (*is_enabled == bValue) {
+            return TRUE;
+        }
+
+        *is_enabled = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:value=%d\n", __func__, __LINE__, *is_enabled);
+        is_radio_config_changed = TRUE;
+        return TRUE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU param is malformed - param was %s \n", __func__,
+        __LINE__, ParamName);
+    return FALSE;
+
+#endif
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        AMSDU_TID_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve bool parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned bool value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL AMSDU_TID_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
+{
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
+        __LINE__);
+    return FALSE;
+#else
+    *pBool = FALSE;
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        BOOL *is_enabled = (BOOL *)hInsContext;
+        if (!is_enabled) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid TID for AMSDU - param was %s\n",
+                __func__, __LINE__, ParamName);
+            return FALSE;
+        }
+
+        *pBool = *is_enabled;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:value=%d\n", __func__, __LINE__, *is_enabled);
+        return TRUE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU GET param is malformed - param was %s \n",
+        __func__, __LINE__, ParamName);
+    return FALSE;
+#endif
+}
+
+BOOL AMSDU_TID_Validate(ANSC_HANDLE hInsContext, char *pReturnParamName, ULONG *puLength)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    UNREFERENCED_PARAMETER(pReturnParamName);
+    UNREFERENCED_PARAMETER(puLength);
+    return TRUE;
+}
+
+ULONG
+AMSDU_TID_Commit(ANSC_HANDLE hInsContext)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
+ULONG
+AMSDU_TID_Rollback(ANSC_HANDLE hInsContext)
+{
+    return ANSC_STATUS_SUCCESS;
+}
 
 /***********************************************************************
 

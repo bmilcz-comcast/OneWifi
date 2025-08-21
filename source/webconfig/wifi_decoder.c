@@ -3187,13 +3187,15 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     while ((ptr = strchr(tmp, ',')) != NULL) {
         ptr++;
-        radio_info->amsduTid[amsdu_tid_idx] = atoi(tmp);
+        radio_info->amsduTid[amsdu_tid_idx] = (BOOL)atoi(tmp);
         tmp = ptr;
         amsdu_tid_idx++;
     }
     // Last AMSDU TID
     radio_info->amsduTid[amsdu_tid_idx++] = atoi(tmp);
 
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s %d: BRAYAN: AMSDU: %d, %d, %d, %d, %d, %d, %d, %d\n",
+            __func__, __LINE__, radio_info->amsduTid[0],radio_info->amsduTid[1],radio_info->amsduTid[2],radio_info->amsduTid[3],radio_info->amsduTid[4],radio_info->amsduTid[5],radio_info->amsduTid[6],radio_info->amsduTid[7]);
     if (amsdu_tid_idx != MAX_AMSDU_TID) {
         wifi_util_error_print(WIFI_WEBCONFIG,
             "number of AMSDU TIDs decoded - %d does not match required amount - %d!\n", amsdu_tid_idx, MAX_AMSDU_TID);

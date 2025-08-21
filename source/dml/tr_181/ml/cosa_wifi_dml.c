@@ -4894,16 +4894,6 @@ Stats3_Commit
    *  AMSDU_TID_SetParamBoolValue
 
  ***********************************************************************/
-
-static BOOL *get_tid_from_param(int tid_idx, wifi_radio_operationParam_t *wifiRadioOperParam)
-{
-    if (tid_idx >= 0 && tid_idx < MAX_AMSDU_TID)
-    {
-        return &wifiRadioOperParam->amsduTid[tid_idx];
-    }
-    return NULL;
-}
-
 /**********************************************************************
 
         caller:	 owner of this object
@@ -4970,18 +4960,35 @@ AMSDU_TID_GetEntry(ANSC_HANDLE hInsContext, ULONG nIndex, ULONG *pInsNumber)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: nIndex:%ld\n", __func__, __LINE__, nIndex);
     wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *)hInsContext;
 
-    if (nIndex < MAX_AMSDU_TID) {
-        if (wifiRadioOperParam == NULL) {
-            wifi_util_dbg_print(WIFI_DMCLI,
-                "%s:%d: No valid wifiRadioOperParam was given for AMSDU setting\n", __func__,
-                __LINE__);
-            return NULL;
-        }
+    INT radio_instance_number = 0;
 
-        *pInsNumber = nIndex + 1;
-        return (ANSC_HANDLE)get_tid_from_param(*pInsNumber - 1, wifiRadioOperParam);
+    if (nIndex >= MAX_AMSDU_TID) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Bad AMSDU TID idx specified: %ld\n", __func__,__LINE__, nIndex);
+        return NULL;
     }
-    return NULL; /* return the handle */
+
+    if (wifiRadioOperParam == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed to get wifiRadioOperParam\n", __func__,__LINE__);
+        return FALSE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 1\n", __func__, __LINE__);
+    if (convert_freq_band_to_radio_index(wifiRadioOperParam->band, &radio_instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band - can't decode radio idx %X\n", __func__, __LINE__, wifiRadioOperParam->band);
+        return FALSE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 2\n", __func__, __LINE__);
+    if ((radio_instance_number < 0) || (radio_instance_number > (INT)get_num_radio_dml()))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Radio instanceNumber:%d out of range\n", __func__,__LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 3\n", __func__, __LINE__);
+    *pInsNumber = nIndex + 1;
+    return (ANSC_HANDLE) ((radio_instance_number << 8) + *pInsNumber);
 }
 
 /**********************************************************************
@@ -5023,8 +5030,30 @@ BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL 
     return FALSE;
 #else
 
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 1\n", __func__, __LINE__);
+    unsigned long amsdu_mask = (unsigned long)hInsContext;
+    uint8_t radio_instance_number = amsdu_mask >> 8;
+    uint8_t tid_idx = (amsdu_mask & 0xf) - 1;
+
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(radio_instance_number);
+
+    if (wifiRadioOperParam == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 2\n", __func__, __LINE__);
+    if ((radio_instance_number < 0) || (radio_instance_number > (INT)get_num_radio_dml()))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Radio instanceNumber:%d out of range\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 3\n", __func__, __LINE__);
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
-        BOOL *is_enabled = (BOOL *)hInsContext;
+        BOOL *is_enabled = (BOOL *)&wifiRadioOperParam->amsduTid[tid_idx];
         if (!is_enabled) {
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid TID for AMSDU - param was %s\n",
                 __func__, __LINE__, ParamName);
@@ -5086,21 +5115,35 @@ BOOL AMSDU_TID_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL 
         __LINE__);
     return FALSE;
 #else
-    *pBool = FALSE;
 
+    unsigned long amsdu_mask = (unsigned long)hInsContext;
+    uint8_t radio_instance_number = amsdu_mask >> 8;
+    uint8_t tid_idx = (amsdu_mask & 0xf) - 1;
+
+    wifi_radio_operationParam_t *wifiRadioOperParam = get_dml_radio_operation_param(radio_instance_number);
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 1\n", __func__, __LINE__);
+    if (wifiRadioOperParam == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 2\n", __func__, __LINE__);
+    if ((radio_instance_number < 0) || (radio_instance_number > (INT)get_num_radio_dml()))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Radio instanceNumber:%d out of range\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 3\n", __func__, __LINE__);
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
-        BOOL *is_enabled = (BOOL *)hInsContext;
-        if (!is_enabled) {
-            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid TID for AMSDU - param was %s\n",
-                __func__, __LINE__, ParamName);
-            return FALSE;
-        }
-
-        *pBool = *is_enabled;
-        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:value=%d\n", __func__, __LINE__, *is_enabled);
+        *pBool = wifiRadioOperParam->amsduTid[tid_idx];
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:value=%d\n", __func__, __LINE__, *pBool);
         return TRUE;
     }
 
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: BRAYAN 5\n", __func__, __LINE__);
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU GET param is malformed - param was %s \n",
         __func__, __LINE__, ParamName);
     return FALSE;

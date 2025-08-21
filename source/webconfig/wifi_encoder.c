@@ -342,10 +342,18 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     if ((strlen(out_list) > 1) && (strlen(out_list) < sizeof(str))) {
         strncpy(str, out_list, strlen(out_list) - 1);
+    wifi_util_error_print(WIFI_WEBCONFIG, "BRAYAN: AMSDU: COPIED VALUES\n");
     } else {
         strcpy(str, " ");
+    
+    wifi_util_error_print(WIFI_WEBCONFIG, "BRAYAN: AMSDU: EMPTY STR\n");
     }
 
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s %d: BRAYAN: AMSDU: %d, %d, %d, %d, %d, %d, %d, %d\n",
+            __func__, __LINE__, radio_info->amsduTid[0],radio_info->amsduTid[1],radio_info->amsduTid[2],radio_info->amsduTid[3],radio_info->amsduTid[4],radio_info->amsduTid[5],radio_info->amsduTid[6],radio_info->amsduTid[7]);
+    
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s %d: BRAYAN ENCODED: AMSDU: %s\n",
+            __func__, __LINE__, str);
     cJSON_AddStringToObject(radio_object, "Amsdu_Tid", str);
 
     // Operating Class Capability details

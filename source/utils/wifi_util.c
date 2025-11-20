@@ -711,7 +711,14 @@ char *get_formatted_time(char *time)
     return time;
 }
 
-void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
+
+static void wifi_util_vprint(wifi_log_level_t level, wifi_dbg_type_t module, char *format, va_list valist)
+{
+
+  return vfprintf(fpg, format, list);
+}
+
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, va_list valist)
 {
     char buff[256] = { 0 };
     va_list list;
@@ -842,6 +849,10 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCsi");
         snprintf(module_filename, sizeof(module_filename), "wifiCsi");
         break;
+    }
+    case WIFI_RDKLOGS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiRdkLogs");
+        snprintf(module_filename, sizeof(module_filename), "wifiRdkLogs");
     }
     default:
         return;

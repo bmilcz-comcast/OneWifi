@@ -116,6 +116,7 @@ typedef enum {
     WIFI_EC,
     WIFI_CSI,
     WIFI_MEMWRAPTOOL,
+    WIFI_RDKLOGS,
 } wifi_dbg_type_t;
 
 typedef enum {
@@ -126,6 +127,35 @@ typedef enum {
 } wifi_log_level_t;
 
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...);
+
+#define wifi_util_print_rdk(rdk_level, module, format, ...)\
+do {\
+    wifi_log_level_t loglevel;\
+    wifi_dbg_type_t mod = WIFI_RDKLOGS;\
+    switch (rdk_level)\
+    {\
+      case RDK_LOG_NONE:\
+      case RDK_LOG_TRACE:\
+      case RDK_LOG_DEBUG:\
+        loglevel = WIFI_LOG_LVL_DEBUG;\
+        break;\
+      case RDK_LOG_INFO:\
+      case RDK_LOG_NOTICE:\
+        loglevel = WIFI_LOG_LVL_INFO;\
+        break;\
+      case RDK_LOG_WARN:\
+      case RDK_LOG_ERROR:\
+      case RDK_LOG_FATAL:\
+        loglevel = WIFI_LOG_LVL_ERROR;\
+        break;\
+      default:\
+        return;\
+    }\
+    wifi_util_print(loglevel, mod, format, ##__VA_ARGS__);\
+} while (0)
+
+#undef RDK_LOG
+#define RDK_LOG wifi_util_print_rdk
 
 #define wifi_util_dbg_print(module, format, ...) \
     wifi_util_print(WIFI_LOG_LVL_DEBUG, module, format, ##__VA_ARGS__)

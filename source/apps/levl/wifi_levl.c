@@ -29,6 +29,7 @@
 #include "wifi_analytics.h"
 //#include <ieee80211.h>
 #include "common/ieee802_11_defs.h"
+#include "common/ieee802_11_common.h"
 #include <fcntl.h>
 #include <errno.h>
 
@@ -309,6 +310,128 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     pthread_mutex_lock(&app->data.u.levl.lock);
     elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
     pthread_mutex_unlock(&app->data.u.levl.lock);
+
+    const u8 *ie_ptr = (const u8 *)frame + IEEE80211_HDRLEN + 4;
+    size_t ie_len = msg->frame.len - (IEEE80211_HDRLEN + 4);
+    const struct element *ie_elem;
+
+    //Inspect if MLD frame and try to find the link address
+    if (elem == NULL) {
+        for_each_element_extid(ie_elem, WLAN_EID_EXT_MULTI_LINK, ie_ptr, ie_len)
+        {
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - each extid element\n", __func__, __LINE__);
+            /*
+             * ie_elem->data layout (Extension IE, ext ID already matched):
+             *   data[0]    = Extension ID (107), consumed by iterator
+             *   data[1..2] = ML Control (le16)
+             *   data[3]    = Common Info Length (includes the length byte itself)
+             *   data[4..]  = Common Info data (MLD MAC, Link ID, etc.)
+             * After common info: Per-STA Profile subelements (TLV, ID=0)
+             */
+
+            /* Need at least: ext_id(1) + ml_control(2) + common_info_len(1) */
+            if (ie_elem->datalen < 4) {
+                continue;
+            }
+
+            u16 ml_control = (u16)(ie_elem->data[2] << 8) | ie_elem->data[1];
+            if ((ml_control & MULTI_LINK_CONTROL_TYPE_MASK) != MULTI_LINK_CONTROL_TYPE_BASIC) {
+                continue;
+            }
+
+            /* common_info_len includes the length byte itself */
+            u8 common_info_len = ie_elem->data[3];
+            if (common_info_len < 1 || ie_elem->datalen < (size_t)(1 + 2 + common_info_len)) {
+                continue;
+            }
+
+            /* Subelements start after: ext_id(1) + ml_control(2) + common_info(common_info_len) */
+            const u8 *sub_start = ie_elem->data + 1 + 2 + common_info_len;
+            size_t sub_len = ie_elem->datalen - (1 + 2 + common_info_len);
+
+            const struct element *sub;
+            for_each_element_id(sub, EHT_ML_SUB_ELEM_PER_STA_PROFILE, sub_start, sub_len) {
+                /*
+                 * Per-STA Profile subelement data layout:
+                 *   data[0..1] = STA Control (le16)
+                 *   data[2]    = STA Info Length (includes itself)
+                 *   data[3..8] = Link MAC Address (if MAC_ADDR_PRESENT flag set)
+                 */
+                if (sub->datalen < 2 + 1 + ETH_ALEN) {
+                    wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN SKIP, LOWLEN\n", __func__, __LINE__);
+                    continue;
+                }
+
+                wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - PER STA PROFILE USABLE\n", __func__, __LINE__);
+                u16 sta_ctrl = (u16)(sub->data[1] << 8) | sub->data[0];
+                if (!(sta_ctrl & EHT_PER_STA_CTRL_MAC_ADDR_PRESENT_MSK)) {
+                    wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN SKIP, LOWLEN 2\n", __func__, __LINE__);
+                    continue;
+                }
+
+                mac_addr_str_t link_mac_str = {0};
+                to_mac_str((u8 *)(sub->data + 3), link_mac_str);
+                pthread_mutex_lock(&app->data.u.levl.lock);
+                elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, link_mac_str);
+                pthread_mutex_unlock(&app->data.u.levl.lock);
+                if (elem != NULL) {
+                    if (memcmp((u8 *)(sub->data + 3), frame->sa, ETH_ALEN) == 0) {
+                        wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - FOUND THE MAC WE NEED: %s\n", __func__, __LINE__, link_mac_str);
+                        break;
+                    } else {
+                        wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - FOUND MAC: %s BUT NOT THE ONE WE NEED\n", __func__, __LINE__, link_mac_str);
+                        //TODO: Do higher level apps want probe requests NOT from their respecitve assoc bands ?
+                        free(elem);
+                    }
+                }
+            }
+            
+            if (elem == NULL && common_info_len > ETH_ALEN) {
+                // Probe Req can come with MLD MAC as well
+                u8 *comm_info = (u8 *)ie_elem->data + 4;
+                mac_addr_str_t mld_mac_str = { 0 };
+                to_mac_str(comm_info, mld_mac_str);
+                pthread_mutex_lock(&app->data.u.levl.lock);
+                elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mld_mac_str);
+                pthread_mutex_unlock(&app->data.u.levl.lock);
+                if (elem != NULL) {
+                    break;
+                } else {
+                    wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - FOUND MLD MAC: %s BUT NOT THE ONE WE NEED\n", __func__, __LINE__, mld_mac_str);
+                }
+            }
+
+            if (elem != NULL) {
+                break;
+            }
+        }
+    }
+
+    if (elem == NULL) {
+        for_each_element_extid(ie_elem, WLAN_EID_VENDOR_SPECIFIC, ie_ptr, ie_len) {
+            if (ie_elem->datalen < 4) {
+                continue;
+            }
+                mac_addr_str_t vendor_mac_str = { 0 };
+                to_mac_str(ie_elem->data + 7 + 3, vendor_mac_str);          
+                wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - FOUND VENDOR MAC: %s \n", __func__, __LINE__, vendor_mac_str);
+                pthread_mutex_lock(&app->data.u.levl.lock);
+                elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, vendor_mac_str);
+                pthread_mutex_unlock(&app->data.u.levl.lock);
+                if (elem != NULL) {
+                    if (memcmp((u8 *)(sub->data + 7 + 3), frame->sa, ETH_ALEN) == 0) {
+                        wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - FOUND THE MAC WE NEED: %s\n", __func__, __LINE__, vendor_mac_str);
+                        break;
+                    } else {
+                        wifi_util_dbg_print(WIFI_APPS, "%s:%d: BRAYAN - FOUND MAC: %s BUT NOT THE ONE WE NEED\n", __func__, __LINE__, vendor_mac_str);
+                        //TODO: Do higher level apps want probe requests NOT from their respecitve assoc bands ?
+                        free(elem);
+                    }
+                }
+            }
+        }
+    }
+
     if (elem == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d:probe not found for mac address:%s\n", __func__, __LINE__, str);
         //assert(1);

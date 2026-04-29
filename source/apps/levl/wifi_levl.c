@@ -309,7 +309,33 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     pthread_mutex_lock(&app->data.u.levl.lock);
     elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
     pthread_mutex_unlock(&app->data.u.levl.lock);
+
     if (elem == NULL) {
+        rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(msg->frame.ap_index);
+        if (rdk_vap_info == NULL) {
+            wifi_util_dbg_print(WIFI_APPS,"%s:%d rdk vap info is null for ap index %d\n", __func__, __LINE__, msg->frame.ap_index);
+        } else {
+            assoc_dev_data_t *assoc_data;
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+            pthread_mutex_lock(&app->data.u.levl.lock);
+            assoc_data = (assoc_dev_data_t *)hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
+            if (assoc_data != NULL) {
+                for (unsigned int i = 0; i < assoc_data->mld_info.cli_staLinkCount; ++i) {
+                    mac_addr_str_t link_mac_str = { 0 };
+                    to_mac_str(assoc_data->mld_info.cli_LinkInfo[i].cli_LinkMACAddress, link_mac_str);
+                    elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, link_mac_str);
+                    if (elem != NULL) {
+                        break;
+                    }
+                }
+            }
+            pthread_mutex_unlock(&app->data.u.levl.lock);
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+        }
+    }
+
+    if (elem == NULL) {
+        //check assoc devices map
         wifi_util_dbg_print(WIFI_APPS,"%s:%d:probe not found for mac address:%s\n", __func__, __LINE__, str);
         //assert(1);
         // assoc request bus send

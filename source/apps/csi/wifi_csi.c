@@ -135,6 +135,8 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
     pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
     if (rdk_vap_info->associated_devices_map != NULL) {
         assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
+            wifi_util_info_print(WIFI_APPS, "%s:%d BRAYAN: CLIENT TRIES TO SUBSCRIBE TO MAC %s ON AP %d\n",
+                __func__, __LINE__, mac_str, ap_index);
 
         if (assoc_dev_data != NULL && assoc_dev_data->dev_stats.cli_MLDEnable == true &&
             assoc_dev_data->association_link == true) {
@@ -142,6 +144,8 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
             // mac addresses
             memcpy(link_addr, assoc_dev_data->link_address, mac_size);
             to_mac_str((unsigned char *)link_addr, mac_str);
+            wifi_util_info_print(WIFI_APPS, "%s:%d BRAYAN: WE WILL USE LINK MAC %s ON AP %d\n",
+                __func__, __LINE__, mac_str, ap_index);
             is_mlo = true;
         }
     }

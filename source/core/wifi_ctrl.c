@@ -4043,7 +4043,7 @@ int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_updat
 {
     int ret = RETURN_OK;
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
-    if (webconfig_encode(&ctrl->webconfig, dml_cache_update_subdoc, webconfig_subdoc_type_dml) ==
+    /*if (webconfig_encode(&ctrl->webconfig, dml_cache_update_subdoc, webconfig_subdoc_type_dml) ==
         webconfig_error_none) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
     } else {
@@ -4053,7 +4053,7 @@ int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_updat
         ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_all_cfg_rsp_pending;
         ret = RETURN_ERR;
     }
-    webconfig_data_free(dml_cache_update_subdoc);
+    webconfig_data_free(dml_cache_update_subdoc);*/
     return ret;
 }
 #endif

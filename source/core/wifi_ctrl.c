@@ -3513,7 +3513,7 @@ void update_mlo_rfc_enable(bool init)
 
         if (scheduler_add_timer_task(wifi_mgr->ctrl.sched, FALSE,
                 &mlo_rfc_status.last_mlo_rfc_notify_task_id, set_mlo_rfc_task, &mlo_rfc_status,
-                1000, 1, FALSE) != RETURN_OK) {
+                60000, 1, FALSE) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to schedule timer task for MLO RFC\n",
                 __FUNCTION__, __LINE__);
             mlo_rfc_status.last_mlo_rfc_enable_notify_status_pending = false;

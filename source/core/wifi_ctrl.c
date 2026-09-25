@@ -3661,6 +3661,14 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
         return false;
     }
 
+    wifi_util_info_print(log_type,
+        "%s:%d: BRAYAN: main_vap_index=%d pwd=%s\n",
+        __func__, __LINE__, main_vap->vap_index, main_vap->u.bss_info.security.u.key.key);
+
+    wifi_util_info_print(log_type,
+        "%s:%d: BRAYAN: vap_index=%d pwd=%s\n",
+        __func__, __LINE__, vap->vap_index, vap->u.bss_info.security.u.key.key);
+
     /* Compare Password/Key */
     if (strncmp(main_vap->u.bss_info.security.u.key.key,
                 vap->u.bss_info.security.u.key.key,
@@ -3812,12 +3820,16 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                     for (n = 0; n < vap_names_size; n++) {
                         if (strcmp(vap_names[n], mgr_vap->vap_name) == 0) {
                             target_vap = webconfig_find_vap_by_name(data, mgr_vap->vap_name);
+                            wifi_util_dbg_print(log_type,
+                                "%s:%d: BRAYAN: VAP TAKEN FROM INPUT\n", __func__, __LINE__);
                             break;
                         }
                     }
                 } else {
                     /* DB/init path: modify mgr cache directly */
                     target_vap = mgr_vap;
+                    wifi_util_dbg_print(log_type,
+                        "%s:%d: BRAYAN: VAP TAKEN FROM CACHE\n", __func__, __LINE__);
                 }
 
                 if (target_vap == NULL) {
@@ -3870,6 +3882,8 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 
                 /* Main link (link_id == 0) provides the shared MLD MAC address */
                 if (mld_conf->mld_link_id == 0) {
+                    wifi_util_dbg_print(log_type,
+                        "%s:%d: BRAYAN: MAIN LINK VAP IS vap_index=%d\n", __func__, __LINE__, target_vap->vap_index);
                     main_link_vap = target_vap;
                     memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
                 }

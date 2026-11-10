@@ -271,7 +271,7 @@ typedef int  (* stop_scheduler_tasks_t)(wifi_mon_collector_element_t *c_elem);
 //New Monitor Implementation
 typedef struct {
     hash_map_t *collector_list; //wifi_mon_collector_element_t
-} __attribute__((packed)) wifi_apps_coordinator_t;
+} wifi_apps_coordinator_t;
 
 typedef struct {
     wifi_mon_stats_type_t stats_type;
@@ -305,7 +305,7 @@ struct wifi_mon_collector_element{
     union {
         collector_radio_channel_neighbor_data_t radio_channel_neighbor_data;
     } u;
-} __attribute__((packed));
+}; //__attribute__((packed));
 
 typedef struct {
     struct timespec last_update_time_offchannel[MAX_CHANNELS];

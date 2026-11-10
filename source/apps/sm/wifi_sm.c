@@ -937,6 +937,7 @@ int free_sm_stats_config_map(wifi_app_t *app)
 
 int sm_deinit(wifi_app_t *app)
 {
+    wifi_util_info_print(WIFI_SM, "%s:%d: BRAYAN DEINIT SM app\n", __func__, __LINE__);
     sm_stats_to_monitor_set(app, false);
     free_sm_stats_config_map(app);
     if (client_assoc_stats != NULL) {

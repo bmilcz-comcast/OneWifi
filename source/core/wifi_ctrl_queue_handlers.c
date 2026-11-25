@@ -2842,9 +2842,14 @@ void process_dfs_rfc(bool type)
         int ret;
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
         radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(rIdx);
+        if (radio_params == NULL || radio_feat == NULL) {
+            continue;
+        }
         if (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) {
             pthread_mutex_lock(&g_wifidb->data_cache_lock);
-            radio_params->DfsEnabled = type;
+            wifi_util_dbg_print(WIFI_DB,"BRAYAN WIFI Updating DFS to value %d for radio %d\n", type, rIdx);
+            //override for no anyway
+            radio_params->DfsEnabled = true;
             //Note : while disabling the dfs, changing the channel from DFS channel
             if (radio_params->DfsEnabled == 0) {
                 if ((radio_params->channel >= 52) && (radio_params->channel < 149)) {

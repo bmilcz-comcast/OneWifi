@@ -3747,10 +3747,10 @@ Radio_SetParamUlongValue
                  (wifiRadioOperParam->band == WIFI_FREQUENCY_5L_BAND) ||
                  (wifiRadioOperParam->band == WIFI_FREQUENCY_5H_BAND))
         {
-            if (is_dfs_channel_allowed(uValue) == false)
-            {
-                return FALSE;
-            }
+            // if (is_dfs_channel_allowed(uValue) == false)
+            // {
+            //     return FALSE;
+            // }
         }
 
         wifiRadioOperParam->channel = uValue;

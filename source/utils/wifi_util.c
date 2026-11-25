@@ -2947,7 +2947,7 @@ int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *
     if ( ((band == WIFI_FREQUENCY_5_BAND)  ||
           (band == WIFI_FREQUENCY_5L_BAND) || (band == WIFI_FREQUENCY_5H_BAND)) &&
          (dfs_enabled == FALSE) ) {
-         remove_dfs_channels = TRUE;
+         //remove_dfs_channels = TRUE;
     }
 
     *buf = '\0';

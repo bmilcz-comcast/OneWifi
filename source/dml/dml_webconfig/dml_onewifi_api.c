@@ -1168,7 +1168,7 @@ bool is_dfs_channel_allowed(unsigned int channel)
         return true;
     }
 
-    return false;
+    return true;
 }
 
 wifi_vap_info_t *get_dml_cache_vap_info(uint8_t vap_index)
